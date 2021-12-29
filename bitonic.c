@@ -10,7 +10,8 @@
 
 
 #define MASTER 0        // Who should do the final processing?
-#define OUTPUT_NUM 10   // Number of elements to display in output
+#define OUTPUT_NUM 5   // Number of elements to display in output
+#define INTERVAL 10000  
 
 // Globals
 // Not ideal for them to be here though
@@ -60,7 +61,7 @@ int main(int argc, char * argv[]) {
 
     // Start Timer before starting first sort operation (first iteration)
     if (process_rank == MASTER) {
-        printf("Number of Processes spawned: %d\n", num_processes);
+        printf("\nNumber of Processes: %d \nSeed: %d \nData Size: %d \n\n", num_processes, atoi(argv[2]), atoi(argv[1]));
         timer_start = MPI_Wtime();
     }
 
@@ -82,7 +83,7 @@ int main(int argc, char * argv[]) {
 
     // Blocks until all processes have finished sorting
     MPI_Barrier(MPI_COMM_WORLD);
-
+/*
     if (process_rank == MASTER) {
         timer_end = MPI_Wtime();
 	printf("Rank: %d\n", process_rank);
@@ -100,28 +101,101 @@ int main(int argc, char * argv[]) {
         printf("Time Elapsed (Sec): %f\n", timer_end - timer_start);
     }
 
+    if (process_rank == 1) {
+      
+        printf("Rank: %d\n", process_rank);
+        for (i = 0; i < array_size; i++) {
+            if ((i % (array_size / OUTPUT_NUM)) == 0) {
+                printf("%d ",array[i]);
+            }
+        }
+	printf("\n\n");	
+	}
 
     if (process_rank == 2) {
-        timer_end = MPI_Wtime();
-	printf("Rank: %d\n", process_rank);
-        printf("Displaying sorted array (only 10 elements for quick verification)\n");
-       
+ 
+	printf("Rank: %d\n", process_rank);     
 	for (i = 0; i < array_size; i++) {
             if ((i % (array_size / OUTPUT_NUM)) == 0) {
                 printf("%d ",array[i]);
             }
         }
-   
-}
+	printf("\n\n");
+	}
 
+if (process_rank == 3) {
 
+        printf("Rank: %d\n", process_rank);
+        for (i = 0; i < array_size; i++) {
+            if ((i % (array_size / OUTPUT_NUM)) == 0) {
+                printf("%d ",array[i]);
+            }
+        }
+	printf("\n\n");
+   }
+*/
 
+    MPI_Barrier(MPI_COMM_WORLD);
+  
+    int *cnts; 
+    if(process_rank == MASTER){
+    cnts = (int *) malloc(num_processes * array_size * sizeof(int));
+  }
 
+     if(process_rank == MASTER){
+      
+        MPI_Gather(
+            array, 
+            array_size, 
+            MPI_INT, 
+            cnts, 
+            array_size, 
+            MPI_INT,
+            MASTER, 
+            MPI_COMM_WORLD);
+    }
+    else{
+        MPI_Gather(
+            array, 
+            array_size, 
+            MPI_INT, 
+            NULL, 
+            0, 
+            MPI_INT,
+            MASTER, 
+            MPI_COMM_WORLD);
+    }
 
     // Reset the state of the heap from Malloc
     free(array);
 
+    timer_end = MPI_Wtime();
+    //printf("\n\n");
+    //printf("Time Elapsed (Sec): %f\n", timer_end - timer_start);
+    //print result
+    int print_num = 0;
+    if (process_rank == MASTER) {
+	
+        printf("Time Elapsed (Sec): %f\n\n", timer_end - timer_start);
+/*
+        printf("Final Result Quick Check: \n");
+        print_num = array_size*num_processes/INTERVAL;
+       
+        for (i = 0; i <= print_num; i++) {
+            if(i == 0){
+	     printf("%d \n",cnts[0]);
+	}
+	else{
+		printf("%d \n",cnts[i*INTERVAL-1]);
+        }
+   
+    }*/
+}
+
+
+
     // Done
+    free(cnts);
     MPI_Finalize();
     return 0;
 }
@@ -138,9 +212,9 @@ int ComparisonFunc(const void * a, const void * b) {
 ///////////////////////////////////////////////////
 void CompareLow(int j) {
     int i, min;
-printf("compare low\n");
-printf("%d ",process_rank);
-printf("\n");
+//printf("compare low\n");
+//printf("%d ",process_rank);
+//printf("\n");
     /* Sends the biggest of the list and receive the smallest of the list */
 
     // Send entire array to paired H Process
@@ -177,7 +251,7 @@ printf("\n");
         }
     }
 
-	printf("Low: min: %d max: %d count: %d receive: %d\n", array[0], array[array_size-1],  send_counter, min);
+//	printf("Low: min: %d max: %d count: %d receive: %d\n", array[0], array[array_size-1],  send_counter, min);
 
     buffer_send[0] = send_counter;
 
@@ -241,9 +315,9 @@ printf("\n");
 ///////////////////////////////////////////////////
 void CompareHigh(int j) {
     int i, max;
-printf("compare high\n");
-printf("%d ",process_rank);
-printf("\n");
+//printf("compare high\n");
+//printf("%d ",process_rank);
+//printf("\n");
     // Receive max from L Process's entire array
     int recv_counter;
     int * buffer_recieve = (int *)malloc((array_size + 1) * sizeof(int));
@@ -278,7 +352,7 @@ printf("\n");
     }
 
 	//printf("High: max: %d count: %d\n", max, send_counter);
-	printf("High: min: %d max: %d count: %d receive: %d\n", array[0], array[array_size-1],  send_counter, max);
+//	printf("High: min: %d max: %d count: %d receive: %d\n", array[0], array[array_size-1],  send_counter, max);
     // Receive blocks greater than min from paired slave
     MPI_Recv(
         buffer_recieve,             // buffer message
@@ -313,20 +387,20 @@ printf("\n");
 
 
 
-    for(i=0;i<=buffer_size;i++)
-    printf(" %d> ", buffer_recieve[i]);
+//    for(i=0;i<=buffer_size;i++)
+//    printf(" %d> ", buffer_recieve[i]);
 
 
 
 
     for (i = array_size-1; i >= 0; i--) {
 
-        if(temp_array[m]>=buffer_recieve[k]){
+        if(temp_array[m]>=buffer_recieve[buffer_size+1-k]){
             array[i]=temp_array[m];
             m--;
         }
         else if(k<=buffer_size){
-            array[i]=buffer_recieve[k];
+            array[i]=buffer_recieve[buffer_size+1-k];
             k++;
         }
     }
